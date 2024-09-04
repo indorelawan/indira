@@ -1,29 +1,26 @@
 import * as fs from 'fs';
 
 import axios from 'axios';
+import { TActivity, TActivityResponse, TEventMultipleScheduleData, TEventRangeScheduleData, TActivityFixedLocationData, TActivityFlexibleLocationData, TProjectScheduleData, TRegularScheduleData } from './types';
 
-type TActivityData = {
-  success: boolean;
-  message: string;
-  results: object[];
-};
 
 const getActivities = async () => {
-  const res = await axios.get<TActivityData>(`https://api.festivalrelawan.com/api/activity/ai`);
-  const data = (res.data as TActivityData).results;
+  const res = await axios.get<TActivityResponse>(`https://api.festivalrelawan.com/api/activity/ai`);
+  const data = (res.data as TActivityResponse).results;
 
   const restructuredData = restructureActivities(data);
   return restructuredData;
 };
 
 
-const restructureActivities = (data: object[]) => {
-  const activities = data.map((activity: any) => {
+const restructureActivities = (data: TActivity[]) => {
+  const activities = data.map((activity: TActivity) => {
 
     const getSchedules = () => {
       if (activity.type === 'event') {
         if (activity.events_type === 'multiple') {
-          const mapped = activity.schedules.map((schedule: any) => `
+          const sched = activity.schedules as TEventMultipleScheduleData[]
+          const mapped = sched.map((schedule: TEventMultipleScheduleData) => `
                 Date: ${schedule.date}
                 Start Time: ${schedule.start_time}
                 End Time: ${schedule.end_time}
@@ -33,33 +30,54 @@ const restructureActivities = (data: object[]) => {
         }
 
         if (activity.events_type === 'range') {
+          const sched = activity.schedules as TEventRangeScheduleData
           return `
-                Start Date: ${activity.schedules.start_date}
-                End Date: ${activity.schedules.end_date}
-                Start Time: ${activity.schedules.start_time}
-                End Time: ${activity.schedules.end_time}
+                Start Date: ${sched.start_date}
+                End Date: ${sched.end_date}
+                Start Time: ${sched.start_time}
+                End Time: ${sched.end_time}
           `
         }
       }
 
       if (activity.type === 'project') {
+        const sched = activity.schedules as TProjectScheduleData
         return `
-                Start Date: ${activity.schedules.start_date}
-                End Date: ${activity.schedules.end_date}
+                Start Date: ${sched.start_date}
+                End Date: ${sched.end_date}
                 
 `
       }
 
       if (activity.type === 'regular') {
-        const days = activity.schedules.days.map((d: any) => `- ${d.day}, ${d.start_time} - ${d.end_time}`).join(`
+        const sched = activity.schedules as TRegularScheduleData
+        const days = sched.days.map((d: any) => `- ${d.day}, ${d.start_time} - ${d.end_time}`).join(`
 `)
 
 
         return `
-                Start Date: ${activity.schedules.start_date}
-                End Date: ${activity.schedules.end_date}
+                Start Date: ${sched.start_date}
+                End Date: ${sched.end_date}
                 Days:
                 ${days}
+`
+      }
+    }
+
+    const getLocation = () => {
+      if (activity.location_type === 'fixed') {
+        const loc = activity.location_data as TActivityFixedLocationData
+        return `
+                Street: ${loc.street}
+                Zipcode: ${loc.zipcode}
+                Province: ${loc.province}
+                Regency City: ${loc.regency_city}
+`
+      }
+      if (activity.location_type === 'flexible') {
+        const loc = activity.location_data as TActivityFlexibleLocationData
+        return `
+                Location: ${loc.location}
 `
       }
     }
@@ -88,7 +106,7 @@ ${getSchedules()}
           .join('\n\n')
         }
 
-                Location: ${activity.location_data.location}
+                ${getLocation()}
             `,
       metadata: {
         id: activity._id,
