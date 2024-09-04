@@ -68,6 +68,7 @@ const restructureActivities = (data: TActivity[]) => {
       if (activity.location_type === 'fixed') {
         const loc = activity.location_data as TActivityFixedLocationData
         return `
+                Location:
                 Street: ${loc.street}
                 Zipcode: ${loc.zipcode}
                 Province: ${loc.province}
@@ -100,10 +101,14 @@ ${getSchedules()}
                 Divisions:
             ${activity.divisions
           .map(
-            (division: any) =>
-              `Name: ${division.name}\nJob Description: ${division.jobdesc}\nDuration: ${division.volunteering_duration} hours\nNeed to be Prepared: ${division.need_to_be_prepared}`
+            (division: any) => `
+                Name: ${division.name}
+                Job Description: ${division.jobdesc}
+                Duration: ${division.volunteering_duration} hours
+                Need to be Prepared: ${division.need_to_be_prepared}`
           )
-          .join('\n\n')
+          .join(`
+`)
         }
 
                 ${getLocation()}
