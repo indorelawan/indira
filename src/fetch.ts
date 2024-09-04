@@ -78,7 +78,7 @@ const restructureActivities = (data: TActivity[]) => {
       if (activity.location_type === 'flexible') {
         const loc = activity.location_data as TActivityFlexibleLocationData
         return `
-                Location: ${loc.location}
+                ${loc.location}
 `
       }
     }
