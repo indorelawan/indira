@@ -9,6 +9,8 @@ interface Config {
   maxRetries: number;
   streaming: boolean;
   activityUrl: string;
+  baseUrl: string;
+  port: number;
 }
 
 export const config: Config = {
@@ -19,4 +21,6 @@ export const config: Config = {
   maxRetries: parseInt(process.env.MAX_RETRIES ?? '3'),
   streaming: process.env.STREAMING === 'true',
   activityUrl: process.env.ACTIVITY_URL ?? '',
+  baseUrl: process.env.BASE_URL ?? '',
+  port: parseInt(process.env.PORT ?? '3001'),
 };
