@@ -12,6 +12,8 @@ interface Config {
   baseUrl: string;
   port: number;
   nodeENV: string;
+  embeddingModel: string;
+  fetchDataInterval: string;
 }
 
 export const config: Config = {
@@ -25,4 +27,6 @@ export const config: Config = {
   baseUrl: process.env.BASE_URL ?? '',
   port: parseInt(process.env.PORT ?? '3001'),
   nodeENV: process.env.NODE_ENV ?? 'development',
+  embeddingModel: process.env.EMBEDDING_MODEL ?? '',
+  fetchDataInterval: process.env.FETCH_DATA_INTERVAL ?? '',
 };
