@@ -1,5 +1,5 @@
+import { HuggingFaceTransformersEmbeddings } from '@langchain/community/embeddings/hf_transformers';
 import { Document } from '@langchain/core/documents';
-import { OllamaEmbeddings } from '@langchain/ollama';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { config } from './config';
@@ -20,7 +20,7 @@ export async function saveVectorStore() {
     const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 200, chunkOverlap: 20 });
     const docsSplit = await splitter.splitDocuments(docs);
 
-    const embeddings = new OllamaEmbeddings({
+    const embeddings = new HuggingFaceTransformersEmbeddings({
       model: config.embeddingModel,
     });
 
@@ -36,7 +36,7 @@ export async function saveVectorStore() {
 export async function getVectorStore() {
   try {
     const vectorStore = await MemoryVectorStore.fromExistingIndex(
-      new OllamaEmbeddings({
+      new HuggingFaceTransformersEmbeddings({
         model: config.embeddingModel,
       })
     );

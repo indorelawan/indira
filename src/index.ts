@@ -21,6 +21,13 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.options('*', cors());
+
+// Run once to populate vector store on startup
+(async function runVectorStoreOneTime() {
+  await saveVectorStore();
+})();
+
+// Run every FETCH_DATA_INTERVAL to update vector store
 (async function initializeCronJobs() {
   cron.schedule(config.fetchDataInterval, async () => {
     try {
