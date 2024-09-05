@@ -11,6 +11,7 @@ interface Config {
   activityUrl: string;
   baseUrl: string;
   port: number;
+  nodeENV: string;
 }
 
 export const config: Config = {
@@ -23,4 +24,5 @@ export const config: Config = {
   activityUrl: process.env.ACTIVITY_URL ?? '',
   baseUrl: process.env.BASE_URL ?? '',
   port: parseInt(process.env.PORT ?? '3001'),
+  nodeENV: process.env.NODE_ENV ?? 'development',
 };

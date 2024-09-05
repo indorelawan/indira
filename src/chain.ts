@@ -186,13 +186,15 @@ AI: ${res}`);
   }
 
   // Debugging
-  logger.info('Writing file...')
-  const formattedPrompt = await composedPrompt.format({
-    history: history.join('\n\n'),
-    input: question,
-    context: docsSplit,
-  });
-  writeFileSync(path.resolve(__dirname, '../dev/prompt.txt'), formattedPrompt);
+  logger.debug('Writing file...')
+  if (config.nodeENV === 'development') {
+    const formattedPrompt = await composedPrompt.format({
+      history: history.join('\n\n'),
+      input: question,
+      context: docsSplit,
+    });
+    writeFileSync(path.resolve(__dirname, '../dev/prompt.txt'), formattedPrompt);
+  }
 
   logger.info('Done!')
   return res;
