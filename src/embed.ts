@@ -2,9 +2,10 @@ import { HuggingFaceTransformersEmbeddings } from '@langchain/community/embeddin
 import { Document } from '@langchain/core/documents';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
-import { config } from './config';
 import getActivities from './fetch';
 import logger from './logger';
+
+let VectorStore: MemoryVectorStore | null;
 
 export async function saveVectorStore() {
   try {
@@ -21,11 +22,11 @@ export async function saveVectorStore() {
     const docsSplit = await splitter.splitDocuments(docs);
 
     const embeddings = new HuggingFaceTransformersEmbeddings({
-      model: config.embeddingModel,
+      model: 'Xenova/all-MiniLM-L6-v2',
     });
 
     logger.info('Creating vector store...');
-    await MemoryVectorStore.fromDocuments(docsSplit, embeddings);
+    VectorStore = await MemoryVectorStore.fromDocuments(docsSplit, embeddings)
     logger.info('Successfully saved vector store');
   } catch (error) {
     console.error(error);
@@ -34,16 +35,5 @@ export async function saveVectorStore() {
 }
 
 export async function getVectorStore() {
-  try {
-    const vectorStore = await MemoryVectorStore.fromExistingIndex(
-      new HuggingFaceTransformersEmbeddings({
-        model: config.embeddingModel,
-      })
-    );
-
-    return vectorStore;
-  } catch (error) {
-    console.error(error);
-    throw new Error('Failed to get vector store');
-  }
+  return VectorStore
 }

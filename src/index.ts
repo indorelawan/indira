@@ -5,12 +5,21 @@ import cron from 'node-cron';
 import PinoHttp from 'pino-http';
 import chat from './chain';
 import { config } from './config';
+import { getFingerprint } from './utils'
 import { saveVectorStore } from './embed';
 import logger from './logger';
+import db from './db';
 
 const app = express();
 const port = config.port;
 
+app.use(cors({
+  credentials: true,
+  origin: true,
+}));
+app.use(PinoHttp({
+  logger,
+}))
 app.use(cors());
 app.use(
   PinoHttp({
@@ -19,6 +28,12 @@ app.use(
 );
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use((req, _, next) => {
+  const fingerprint = getFingerprint(req);
+  req.sessionID = fingerprint
+
+  next()
+})
 
 app.options('*', cors());
 
@@ -44,8 +59,9 @@ app.get('/', (req, res) => {
 
 app.post('/chat', async (req, res) => {
   try {
+    const fingerprint = req.sessionID;
     const question = req.body.question as string;
-    const response = await chat(question);
+    const response = await chat(question, fingerprint);
     res.send(response);
   } catch (error) {
     console.log(error);
@@ -54,11 +70,20 @@ app.post('/chat', async (req, res) => {
 });
 
 app.get('/chat', async (req, res) => {
-  const question = req.query.question as string;
-  const response = await chat(question);
-  res.send(response);
+  try {
+    const fingerprint = req.sessionID
+    const question = req.query.question as string;
+    const response = await chat(question, fingerprint);
+    res.send(response);
+  } catch (error) {
+    console.log(error)
+    return res.status(500).send('Indy ada masalah')
+  }
 });
 
-app.listen(port, () => {
+app.listen(port, async () => {
+  // Create tables
+  await db.createTables();
+
   logger.info(`Example app listening at http://localhost:${port}`);
 });

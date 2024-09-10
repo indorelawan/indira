@@ -9,6 +9,10 @@ import path from 'node:path';
 import { getVectorStore } from './embed';
 import logger from './logger';
 import getPrompt from './prompt';
+import db, { THistory } from './db';
+import getActivities from './fetch';
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+import { Document } from '@langchain/core/documents';
 
 const llm = new ChatGroq({
   apiKey: config.groqApiKey,
@@ -18,39 +22,75 @@ const llm = new ChatGroq({
   maxRetries: config.maxRetries,
   streaming: config.streaming,
 });
-const history: string[] = [];
 
-async function chat(question: string) {
-  // Compose prompt
-  const composedPrompt = getPrompt(history);
-  const chain = await createStuffDocumentsChain({ llm: llm, prompt: composedPrompt });
+async function chat(question: string, fingerprint: string) {
+  // get history
+  const history = await db.getHistory(fingerprint) || [];
+  const composedHistory = history.map((item: THistory) => `Human: ${item.question}
+AI: ${item.response}`);
+
+  let composedPrompt, chain, docsSplit
+
+  if (config.useEmbedding) {
+    // Compose prompt
+    composedPrompt = getPrompt(composedHistory);
+    chain = await createStuffDocumentsChain({ llm: llm, prompt: composedPrompt });
+  } else {
+    logger.info('Getting activities...');
+    const activities = await getActivities();
+
+    const docs = activities.map(
+      (activity: any) =>
+        new Document({ pageContent: activity.pageContent, metadata: activity.metadata, id: activity.metadata.id })
+    );
+
+    logger.info('Splitting documents...');
+    const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 200, chunkOverlap: 20 });
+    docsSplit = await splitter.splitDocuments(docs);
+    // Compose prompt
+    composedPrompt = getPrompt(composedHistory);
+    chain = await createStuffDocumentsChain({ llm: llm, prompt: composedPrompt });
+  }
 
   // get retriever
   const vectorStore = await getVectorStore();
-  const retriever = vectorStore.asRetriever();
-
-  logger.info('Invoking chain...');
-  const res = await chain.invoke({
-    history: history.join('\n\n'),
-    input: question,
-    context: await retriever.invoke(question),
+  if (!vectorStore) {
+    throw new Error('Vector store not found');
+  }
+  const retriever = vectorStore.asRetriever({
+    k: 40
   });
 
-  history.push(`Human: ${question}
-AI: ${res}`);
+  logger.info('Invoking chain...');
+  const context = config.useEmbedding ? await retriever.invoke(question) : docsSplit
+  // Debugging
+  if (config.nodeENV !== 'production') {
+    writeFileSync(path.resolve(__dirname, '../dev/context.txt'), config.useEmbedding ? JSON.stringify(context) : (docsSplit as Document<Record<string, any>>[]).join('\n\n'));
+  }
+  const res = await chain.invoke({
+    history: composedHistory.join('\n\n'),
+    input: question,
+    context: context
+  });
 
-  if (history.length > 5) {
-    history.slice(1, history.length - 1);
+  // Add to History and make sure each user only has five history
+  await db.addHistory(fingerprint, { question, response: res });
+
+  // Prune old history
+  if (history.length + 1 > 5) {
+    await db.deleteOldestHistory(fingerprint);
   }
 
   // Debugging
-  logger.info('Writing file...');
-  const formattedPrompt = await composedPrompt.format({
-    history: history.join('\n\n'),
-    input: question,
-    context: await retriever.invoke(question),
-  });
-  writeFileSync(path.resolve(__dirname, '../dev/prompt.txt'), formattedPrompt);
+  if (config.nodeENV !== 'production') {
+    logger.info('Writing file...');
+    const formattedPrompt = await composedPrompt.format({
+      history: history.join('\n\n'),
+      input: question,
+      context
+    });
+    writeFileSync(path.resolve(__dirname, '../dev/prompt.txt'), formattedPrompt);
+  }
 
   logger.info('Done!');
   return res;
